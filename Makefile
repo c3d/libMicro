@@ -102,7 +102,14 @@ $(BINS): bin wrapper
 
 libMicro.tar:	FORCE
 	@chmod +x ./mk_tarball
-	@./mk_tarball $(TARBALL_CONTENTS) 
+	@./mk_tarball $(TARBALL_CONTENTS)
+
+$(ALL): config.h
+config.h: recorder/config.h
+	@cp $< $@
+
+recorder/config.h:
+	@(cd recorder && make)
 
 FORCE:
 

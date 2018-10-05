@@ -1,0 +1,3 @@
+[submodule "recorder"]
+	path = recorder
+	url = https://github.com/c3d/recorder

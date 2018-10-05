@@ -66,6 +66,9 @@
 
 #include "libmicro.h"
 
+#include "recorder/recorder.c"
+#include "recorder/recorder_ring.c"
+
 #define HISTOSIZE	32
 #define DEF_DATASIZE	100000
 #define MIN_DATASIZE	20000
@@ -168,6 +171,7 @@ actual_main(int argc, char *argv[])
 	barrier_t		*b;
 	long long		startnsecs;
 
+        recorder_trace_set(getenv("RECORDER_TRACES"));
 #ifdef USE_RDTSC
 	if (getenv("LIBMICRO_HZ") == NULL) {
 		(void) printf("LIBMICRO_HZ needed but not set\n");
@@ -675,6 +679,9 @@ actual_main(int argc, char *argv[])
 	return exit_val;
 }
 
+
+RECORDER_DEFINE(benchmark, 8, "Raw results of benchmark as it's running");
+
 static void *
 worker_thread(void *arg)
 {
@@ -714,7 +721,13 @@ worker_thread(void *arg)
 		r.re_t0 = getnsecs();
 		ret = benchmark(arg, &r);
 		r.re_t1 = getnsecs();
-		if (lm_optG >= 9) fprintf(stderr, "DEBUG9: worker_thread(%d, %0#lx): benchmark() returned %d\n", getpid(), pthread_self(), ret);
+
+                record(benchmark, "Ran %lld loops in %lld ns (%5.3f ns average)",
+                       r.re_count, r.re_t1 - r.re_t0,
+                       (1.0 * (r.re_t1 - r.re_t0) / r.re_count));
+
+
+        if (lm_optG >= 9) fprintf(stderr, "DEBUG9: worker_thread(%d, %0#lx): benchmark() returned %d\n", getpid(), pthread_self(), ret);
 
 		/* record results and sync */
 		retb = barrier_queue(lm_barrier, &r);
