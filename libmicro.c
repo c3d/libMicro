@@ -681,6 +681,8 @@ actual_main(int argc, char *argv[])
 
 
 RECORDER_DEFINE(benchmark, 8, "Raw results of benchmark as it's running");
+RECORDER_DEFINE(range, 8, "Range of values for benchmark while it's running");
+RECORDER_TWEAK_DEFINE(decay, 1, "Decay of min and max values (1/1000)");
 
 static void *
 worker_thread(void *arg)
@@ -722,9 +724,15 @@ worker_thread(void *arg)
 		ret = benchmark(arg, &r);
 		r.re_t1 = getnsecs();
 
+                static float min_dur = 1e38;
+                static float max_dur = -1e38;
+                float dur = (1.0 * (r.re_t1 - r.re_t0) / r.re_count);
+                float decay = 0.001 * RECORDER_TWEAK(decay);
+                if (min_dur > dur) min_dur = dur; else min_dur = min_dur * (1-decay) + dur * decay;
+                if (max_dur < dur) max_dur = dur; else max_dur = max_dur * (1-decay) + dur * decay;
                 record(benchmark, "Ran %lld loops in %lld ns (%5.3f ns average)",
-                       r.re_count, r.re_t1 - r.re_t0,
-                       (1.0 * (r.re_t1 - r.re_t0) / r.re_count));
+                       r.re_count, r.re_t1 - r.re_t0, dur);
+                record(range, "Benchmark %5.3f ns (%5.3f - %5.3f)", dur, min_dur, max_dur);
 
 
         if (lm_optG >= 9) fprintf(stderr, "DEBUG9: worker_thread(%d, %0#lx): benchmark() returned %d\n", getpid(), pthread_self(), ret);
